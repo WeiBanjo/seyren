@@ -74,6 +74,7 @@ public class SeyrenConfig {
     private final String slackUsername;
     private final String slackIconUrl;
     private final String slackEmojis;
+    private final String slackWebhookUrl;
     private final String pushoverAppApiToken;
     private final String snmpHost;
     private final Integer snmpPort;
@@ -149,6 +150,7 @@ public class SeyrenConfig {
         this.slackUsername = configOrDefault("SLACK_USERNAME", "Seyren");
         this.slackIconUrl = configOrDefault("SLACK_ICON_URL", "");
         this.slackEmojis = configOrDefault("SLACK_EMOJIS", "");
+        this.slackWebhookUrl = configOrDefault("SLACK_WEBHOOK_URL", "");
 
         // PushOver
         this.pushoverAppApiToken = configOrDefault("PUSHOVER_APP_API_TOKEN", "");
@@ -404,6 +406,11 @@ public class SeyrenConfig {
     @JsonIgnore
     public String getSlackIconUrl() {
       return slackIconUrl;
+    }
+
+    @JsonIgnore
+    public String getSlackWebhookUrl() {
+        return slackWebhookUrl;
     }
 
     @JsonIgnore
