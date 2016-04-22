@@ -33,13 +33,13 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.BasicDBObject;
 import com.mongodb.Bytes;
-import com.mongodb.CommandFailureException;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.WriteConcern;
 import com.seyren.core.domain.Alert;
@@ -52,6 +52,14 @@ import com.seyren.core.store.ChecksStore;
 import com.seyren.core.store.SubscriptionsStore;
 import com.seyren.core.util.config.SeyrenConfig;
 import com.seyren.core.util.hashing.TargetHash;
+import org.apache.commons.lang.Validate;
+import org.bson.types.ObjectId;
+import org.joda.time.DateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import static com.seyren.mongo.NiceDBObject.forId;
+import static com.seyren.mongo.NiceDBObject.object;
 
 @Named
 public class MongoStore implements ChecksStore, AlertsStore, SubscriptionsStore {
@@ -80,13 +88,18 @@ public class MongoStore implements ChecksStore, AlertsStore, SubscriptionsStore 
         LOGGER.info("Bootstrapping Mongo indexes. Depending on the number of checks and alerts you've got it may take a little while.");
         try {
             createIndices();
+        } catch (MongoException e) {
+            LOGGER.error("", e);
+        }
+        try {
             removeOldIndices();
+        } catch (MongoException e) {
+            LOGGER.error("", e);
+        }
+        try {
             addTargetHashToAlerts();
         } catch (MongoException e) {
-            LOGGER.error("Failure while bootstrapping Mongo indexes.\n"
-                    + "If you've hit this problem it's possible that you have two checks which are named the same and violate an index which we've tried to add.\n"
-                    + "Please correct the problem by removing the clash. If it's something else, please let us know on Github!", e);
-            throw new RuntimeException("Failed to bootstrap Mongo indexes. Please refer to the logs for more information.", e);
+            LOGGER.error("", e);
         }
         LOGGER.info("Done bootstrapping Mongo indexes.");
     }
@@ -103,7 +116,7 @@ public class MongoStore implements ChecksStore, AlertsStore, SubscriptionsStore 
         LOGGER.info("Dropping old indices");
         try {
             getAlertsCollection().dropIndex(new BasicDBObject("checkId", 1).append("target", 1));
-        } catch (CommandFailureException e) {
+        } catch (MongoCommandException e) {
             if (e.getCode() != -5) {
                 // -5 is the code which appears when the index doesn't exist (which we're happy with, anything else is bad news) 
                 throw e;
