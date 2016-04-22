@@ -66,8 +66,9 @@ public class PagerDutyNotificationService implements NotificationService {
         NotifyResult result = null;
 
         try {
+            String target = alerts.get(0).getTarget();
             if (check.getState() == AlertType.ERROR || check.getState() == AlertType.WARN) {
-                Trigger trigger = new Trigger.Builder("Check '" + check.getName() + "' has exceeded its threshold.")
+                Trigger trigger = new Trigger.Builder("Check '" + check.getName() + " on " + target + "' has exceeded its threshold.")
                         .withIncidentKey(incidentKey(check))
                         .client("Seyren")
                         .clientUrl(url(check))
@@ -76,7 +77,7 @@ public class PagerDutyNotificationService implements NotificationService {
                 result = pagerDuty.notify(trigger);
             } else if (check.getState() == AlertType.OK) {
                 Resolution resolution = new Resolution.Builder(incidentKey(check))
-                        .withDescription("Check '" + check.getName() + "' has been resolved.")
+                        .withDescription("Check '" + check.getName() + " on " + target + "' has been resolved.")
                         .addDetails(details(check, alerts))
                         .build();
                 result = pagerDuty.notify(resolution);
@@ -97,11 +98,14 @@ public class PagerDutyNotificationService implements NotificationService {
         mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         mapper.configure(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES, false);
         mapper.setPropertyNamingStrategy(new PropertyNamingStrategy.LowerCaseWithUnderscoresStrategy());
+        String alertDetail = alerts.get(0).getAlertDetail();
+        String checkDetail = check.getAlertDetail();
+
         return ImmutableMap.<String, String>builder().
-                put("CHECK", mapper.writeValueAsString(check)).
+                put("CHECK", checkDetail).
                 put("STATE", check.getState().name()).
-                put("ALERTS", mapper.writeValueAsString(alerts)).
-                put("SEYREN_URL", seyrenConfig.getBaseUrl()).
+                put("ALERTS", alertDetail).
+                put("SEYREN_URL", seyrenConfig.getBaseUrl() + "/#/checks/" + check.getId()).
                 build();
     }
 
