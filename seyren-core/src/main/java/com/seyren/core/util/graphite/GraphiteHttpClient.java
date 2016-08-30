@@ -29,15 +29,11 @@ import javax.net.ssl.TrustManagerFactory;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpException;
-import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScheme;
-import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.AuthState;
-import org.apache.http.auth.Credentials;
 import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
@@ -49,12 +45,10 @@ import org.apache.http.conn.HttpClientConnectionManager;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.auth.BasicScheme;
-import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
-import org.apache.http.protocol.HttpCoreContext;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -185,13 +179,8 @@ public class GraphiteHttpClient {
         
         // Set auth header for graphite if username and password are provided
         if (!StringUtils.isEmpty(graphiteUsername) && !StringUtils.isEmpty(graphitePassword)) {
-            CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-            credentialsProvider.setCredentials(
-                    new AuthScope(AuthScope.ANY_HOST, AuthScope.ANY_PORT),
-                    new UsernamePasswordCredentials(graphiteUsername, graphitePassword));
-            clientBuilder.setDefaultCredentialsProvider(credentialsProvider);
             context.setAttribute("preemptive-auth", new BasicScheme());
-            clientBuilder.addInterceptorFirst(new PreemptiveAuth());
+            clientBuilder.addInterceptorFirst(new PreemptiveAuth(graphiteUsername, graphitePassword));
         }
         
         return clientBuilder.build();
@@ -260,6 +249,14 @@ public class GraphiteHttpClient {
      * http://subversion.jfrog.org/jfrog/build-info/trunk/build-info-client/src/main/java/org/jfrog/build/client/PreemptiveHttpClient.java
      */
     private static class PreemptiveAuth implements HttpRequestInterceptor {
+        private String graphiteUsername;
+        private String graphitePassword;
+
+        public PreemptiveAuth(String graphiteUsername, String graphitePassword) {
+            this.graphiteUsername = graphiteUsername;
+            this.graphitePassword = graphitePassword;
+        }
+
         public void process(HttpRequest request, HttpContext context) throws HttpException, IOException {
             AuthState authState = (AuthState) context.getAttribute(HttpClientContext.TARGET_AUTH_STATE);
             if (authState.getAuthScheme() != null) {
@@ -269,11 +266,7 @@ public class GraphiteHttpClient {
             if (authScheme == null) {
                 return;
             }
-            CredentialsProvider credsProvider = (CredentialsProvider) context.getAttribute(HttpClientContext.CREDS_PROVIDER);
-            HttpHost targetHost = (HttpHost) context.getAttribute(HttpCoreContext.HTTP_TARGET_HOST);
-            Credentials credentials = credsProvider.getCredentials(new AuthScope(targetHost.getHostName(), targetHost.getPort()));
-            authState.update(authScheme, credentials);
+            authState.update(authScheme, new UsernamePasswordCredentials(graphiteUsername, graphitePassword));
         }
     }
-    
 }
