@@ -238,5 +238,8 @@ public class Check {
         setSubscriptions(subscriptions);
         return this;
     }
-    
+
+    public String getAlertDetail() {
+        return "Target: " + target;
+    }
 }

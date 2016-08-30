@@ -168,5 +168,11 @@ public class Alert {
         setTimestamp(timestamp);
         return this;
     }
-    
+
+    public String getAlertDetail() {
+        return "Target: " + target + '\n'
+                + "Warn: " + warn + '\n'
+                + "Error: " + error + '\n'
+                + "At: " + timestamp;
+    }
 }
